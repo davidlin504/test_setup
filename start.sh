@@ -95,18 +95,19 @@ check_pubkey () {
     ssh-keygen -t rsa -b 4096 -f "${HOME}/.ssh/id_rsa" -N ""
   fi
 
+  cp ${HOME}/.ssh/id_rsa ./id_rsa.pub
   echo "公鑰已就緒：$(cat "$pubkey")"
 }
 
 main() {
 	## Main
 	check_pubkey
-	prepare_args
-	create_configuration_files ${HOST_PORT}
-	remove_or_stop_container
-	start_container
-	wait_container_env
-	show_interface_info
+	# prepare_args
+	# create_configuration_files ${HOST_PORT}
+	# remove_or_stop_container
+	# start_container
+	# wait_container_env
+	# show_interface_info
 }
 
 echo ""
