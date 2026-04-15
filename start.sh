@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ## Customize variable
 GIT_ACCOUNT="`git config user.name`"
@@ -101,8 +101,8 @@ check_pubkey () {
 
 main() {
 	## Main
-	check_pubkey
-	# prepare_args
+	# check_pubkey
+	prepare_args
 	# create_configuration_files ${HOST_PORT}
 	# remove_or_stop_container
 	# start_container

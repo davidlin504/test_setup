@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 docker_daemon="$(which docker)"
 docker_compose_daemon="$(which docker-compose)"
 
