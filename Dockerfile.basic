@@ -15,13 +15,21 @@ RUN apt-get update && apt-get install -y \
 # 設定 SSH 必要配置
 RUN mkdir /var/run/sshd && \
     echo 'root:password123' | chpasswd && \
-    sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
-
-# 修正 SSH 登入問題，確保環境變數正確載入
-RUN sed -i 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' /etc/pam.d/sshd
+    sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config \
+    sed -i 's/#Port 22/Port 2222/' /etc/ssh/sshd_config \
+    # 修正 SSH 登入問題，確保環境變數正確載入
+    sed -i 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' /etc/pam.d/sshd \
+    && echo "export VISIBLE=now" >> /etc/profile \
+    && echo "TZ='Asia/Taipei'; export TZ" >> /etc/profile \
+    && rm -f /etc/localtime \
+    && ln -s /usr/share/zoneinfo/Asia/Taipei /etc/localtime
 
 # 開放連接埠
-EXPOSE 22 111
+# EXPOSE 22 111
+
+RUN cp ./id_rsa.pub /tmp/id_%KEY_TYPE%.pub \
+    cat /tmp/id_rsa.pub >> /root/.ssh/authorized_keys \
+    rm /tmp/id_rsa.pub
 
 # 啟動腳本：同時開啟 rpcbind 與 sshd
 # 使用 -D 讓 sshd 在前景執行，防止容器退出

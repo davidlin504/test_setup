@@ -2,17 +2,15 @@ services:
   test_master:
     build:           # 指向當前目錄下的 Dockerfile
       dockerfile: ./dockerfile.basic
-    image: test_master:v1.0
     container_name: my_ubuntu_test
     network: host
-    privileged: true  # 執行 rpcbind 建議開啟
+    privileged: true
     # ports:
-    #   - "2222:22"     # Mac 2222 -> 容器 22 (SSH)
-    #   - "1111:111"      # Mac 111 -> 容器 111 (RPC)
+    #   - "%HOST_PORT%:22"     # Mac 2222 -> 容器 22 (SSH)
     restart: always
     volumes:
       # - ${HOME}/.ssh/id_rsa.pub:/root/.ssh/id_rsa.pub:ro
-      # - ${HOME}/.ssh/id_rsa.pub:/root/.ssh/authorized_keys:ro
+      - ${HOME}/.ssh/id_%KEY_TYPE%.pub:/root/.ssh/authorized_keys:ro
       - ${HOME}/data:/mnt
       - test_master_share_volume:/home/jenkins
 volumes:
