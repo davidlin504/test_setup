@@ -1,5 +1,9 @@
 FROM gitlabvm.asusautomation.com:5005/ami-images/spx-taas:ASUS_v1.25_20250915
 
+WORKDIR /
+
+ADD ./git_setup.sh /root/git_setup.sh
+ADD ./entrypoint.sh /root/entrypoint.sh
 # 設定環境變數，避免安裝過程出現互動提示
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -17,28 +21,31 @@ RUN apt-get update && apt-get install -y \
 RUN mkdir /var/run/sshd && \
     echo 'root:password123' | chpasswd && \
     sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
-    sed -i 's/#Port 22/Port 2222/' /etc/ssh/sshd_config
-
-# 修正 SSH 登入問題，確保環境變數正確載入
-RUN sed -i 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' /etc/pam.d/sshd
+    sed -i 's/#Port 22/Port 2222/' /etc/ssh/sshd_config && \
+    # 修正 SSH 登入問題，確保環境變數正確載入
+    sed -i 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' /etc/pam.d/sshd
 
 # 開放連接埠
 EXPOSE 2222
 
 
 # 先確保目錄存在
-RUN mkdir -p /root/.ssh && chmod 700 /root/.ssh
+RUN mkdir -p /root/.ssh && \
+    chmod 700 /root/.ssh && \
+    mkdir -p /var/run/sshd
 
-# 將本地的 id_pub.rsa 複製進去，並附加到 authorized_keys
-COPY id_pub.rsa /tmp/id_pub.rsa
-RUN cat /tmp/id_pub.rsa >> /root/.ssh/authorized_keys && \
+# 將本地的 id_ras.pub 複製進去，並附加到 authorized_keys
+COPY ./id_rsa.pub /tmp/id_rsa.pub
+RUN cat /tmp/id_rsa.pub >> /root/.ssh/authorized_keys && \
     chmod 600 /root/.ssh/authorized_keys && \
-    rm /tmp/id_pub.rsa
+    rm /tmp/id_rsa.pub
 
 # 啟動腳本：同時開啟 rpcbind 與 sshd
 # 使用 -D 讓 sshd 在前景執行，防止容器退出
 
-COPY ./entrypoint.sh entrypoint.sh
-RUN chmod +x ./entrypoint.sh
 
-ENTRYPOINT ["./entrypoint.sh"]
+RUN touch /root/.Xauthority && chmod 600 /root/.Xauthority
+RUN chmod +x /root/entrypoint.sh
+RUN chmod +x /root/git_setup.sh
+
+ENTRYPOINT ["/root/entrypoint.sh"]

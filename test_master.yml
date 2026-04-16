@@ -2,18 +2,20 @@ services:
   test_master:
     build:
       dockerfile: Dockerfile         # 指向當前目錄下的 Dockerfile
-    image: spx_master:v1.25
+    image: spx_master:v1.25.1
     stdin_open: true
     tty: true
+    restart: unless-stopped
+    # ports:
+    #   - "2222:2222"
     network_mode: "host"
     container_name: my_spx_master_v1.25
     privileged: true  # 執行 rpcbind 建議開啟
-    restart: always
     environment:
       - DISPLAY=:0
+      - GIT_ACCOUNT=stanley7
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
-      - ~/.Xauthority:/root/.Xauthority:ro
-      - ${HOME}/Desktop/spx_sandbox/output:/output
-      - ${HOME}/Desktop/spx_sandbox/results:/myvol
-      - ${HOME}/Desktop/spx_taas_v1.25/Tests:/Tests
+      # - ${HOME}/Desktop/spx_sandbox/output:/output
+      # - ${HOME}/Desktop/spx_sandbox/results:/myvol
+      # - ${HOME}/Desktop/spx_taas_v1.25/Tests:/Tests
