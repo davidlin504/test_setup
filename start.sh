@@ -27,9 +27,9 @@ create_configuration_files() {
 
 remove_or_stop_container() {
 	if [ "$FORCE_REMOVE" -eq 1 ]; then
-		${DOCKER_COMPOSE} down
 		${DOCKER_COMPOSE} kill
 		${DOCKER_COMPOSE} rm -f
+		${DOCKER_COMPOSE} build
 	else
 		${DOCKER_COMPOSE} stop > /dev/null
 	fi
@@ -122,7 +122,7 @@ main() {
 	create_configuration_files ${HOST_PORT}
 	remove_or_stop_container
 	start_container
-	# wait_container_env
+	wait_container_env
 	show_interface_info
 }
 

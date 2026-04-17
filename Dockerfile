@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y \
     iproute2 \
     curl \
     vim \
+    nfs-common \
     && rm -rf /var/lib/apt/lists/*
 
 # 設定 SSH 必要配置
@@ -30,9 +31,10 @@ EXPOSE 2222
 
 
 # 先確保目錄存在
-RUN mkdir -p /root/.ssh && \
-    chmod 700 /root/.ssh && \
-    mkdir -p /var/run/sshd
+RUN mkdir -p /root/.ssh \
+    && chmod 700 /root/.ssh \
+    && mkdir -p /var/run/sshd \
+    && mkdir -p /mnt/tftpboot_remote
 
 # 將本地的 id_ras.pub 複製進去，並附加到 authorized_keys
 COPY ./id_rsa.pub /tmp/id_rsa.pub
@@ -44,8 +46,9 @@ RUN cat /tmp/id_rsa.pub >> /root/.ssh/authorized_keys && \
 # 使用 -D 讓 sshd 在前景執行，防止容器退出
 
 
-RUN touch /root/.Xauthority && chmod 600 /root/.Xauthority
-RUN chmod +x /root/entrypoint.sh
-RUN chmod +x /root/git_setup.sh
+RUN touch /root/.Xauthority \
+    && chmod 600 /root/.Xauthority \
+    && chmod +x /root/entrypoint.sh \
+    && chmod +x /root/git_setup.sh
 
 ENTRYPOINT ["/root/entrypoint.sh"]

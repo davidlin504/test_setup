@@ -34,8 +34,18 @@ prepare_jenkins_user() {
       groupadd -g "${JENKINS_GID}" "${JENKINS_GROUP}"
   fi
 
-  # add jenkins user (檢查使用者是否已存在，避免重複執行報錯)
-  if ! id -u "${JENKINS_USER}" > /dev/null 2>&1; then
+  # 檢查 UID 1000 是否已被佔用
+  EXISTING_USER=$(getent passwd "${JENKINS_UID}" | cut -d: -f1)
+
+  if [ -n "${EXISTING_USER}" ]; then
+      echo "UID ${JENKINS_UID} is already taken by user: ${EXISTING_USER}"
+      # 如果佔用者不是我們要的 jenkins 使用者，可以選擇更名或直接使用
+      if [ "${EXISTING_USER}" != "${JENKINS_USER}" ]; then
+          echo "Renaming existing user ${EXISTING_USER} to ${JENKINS_USER}..."
+          usermod -l "${JENKINS_USER}" -d "${JENKINS_AGENT_HOME}" -m "${EXISTING_USER}"
+      fi
+  else
+      # UID 沒被佔用，正常建立
       useradd -d "${JENKINS_AGENT_HOME}" -u "${JENKINS_UID}" -g "${JENKINS_GID}" -m -s /bin/bash "${JENKINS_USER}"
   fi
 
@@ -47,5 +57,5 @@ prepare_jenkins_user() {
 
 # prepare_jenkins_user
 
-# /etc/init.d/rpcbind start
+/etc/init.d/rpcbind start
 exec /usr/sbin/sshd -D
