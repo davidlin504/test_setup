@@ -4,6 +4,18 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m' # No Col[${GREEN}Error${NC}]or
 
+# 1. 檢查 ipmitool 主程式
+if ! ipmitool_path="$(command -v ipmitool)"; then
+    echo -e "[${RED}Error${NC}]: ipmitool is not installed."
+    exit 1
+else
+    # 擷取版本號 (例如: 24.0.5)
+    ipmitool_ver=$(ipmitool -V 2>&1 | awk '{print $3}')
+    echo -e "[${GREEN}Success${NC}]: Found ipmitool at $ipmitool_path (Version: $ipmitool_ver)"
+fi
+
+exit 0
+
 # 1. 檢查 Docker 主程式
 if ! docker_path="$(command -v docker)"; then
     echo -e "[${RED}Error${NC}]: Docker is not installed."

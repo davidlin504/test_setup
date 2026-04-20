@@ -9,6 +9,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # 更新並安裝必要工具：ssh, rpcbind, 以及常用的網管工具
 RUN apt-get update && apt-get install -y \
+    ipmitool \
     git \
     openssh-server \
     rpcbind \
