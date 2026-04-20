@@ -121,20 +121,20 @@ prepare_args() {
 }
 
 check_pubkey() {
-  local pubkey="${HOME}/.ssh/id_rsa.pub"
+  local pubkey="${HOME}/.ssh/id_${KEY_TYPE}.pub"
 
   if [[ ! -f "$pubkey" ]]; then
     echo "正在為您生成新的 SSH Key..."
-    ssh-keygen -t rsa -b 4096 -f "${HOME}/.ssh/id_rsa" -N ""
+    ssh-keygen -t ${KEY_TYPE} -b 4096 -f "${HOME}/.ssh/id_${KEY_TYPE}" -N ""
   fi
 
-  cp ${HOME}/.ssh/id_rsa.pub ./id_rsa.pub
+  cp ${HOME}/.ssh/id_${KEY_TYPE}.pub ./id_${KEY_TYPE}.pub
   # echo "公鑰已就緒：$(cat "$pubkey")"
 }
 
 main() {
-	check_pubkey
 	prepare_args
+	check_pubkey
 	create_configuration_files ${HOST_PORT}
 	remove_or_stop_container
 	start_container
