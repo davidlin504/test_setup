@@ -9,20 +9,34 @@ CONTAINER_CMDS=""
 DOCKER_COMPOSE_TEMPLATE_PATH="test_master.template.yml"
 DOCKER_COMPOSE_TARGET_PATH="test_master.yml"
 DOCKER_COMPOSE="docker compose -f ${DOCKER_COMPOSE_TARGET_PATH}"
+SHARE_VOLUMES_OUTPUT="${HOME}/output"
+SHARE_VOLUMES_MYVOL="${HOME}/myvol"
 
 usage() {
   echo "Usage: $0 [-h]"
 }
 
+check_share_volumes() {
+  local SHARE_VOLUMES_OUTPUT=$1
+  if [ ! -d "${SHARE_VOLUMES_OUTPUT}" ]; then
+    echo "Creating output directory at ${SHARE_VOLUMES_OUTPUT}..."
+    mkdir -p "${SHARE_VOLUMES_OUTPUT}"
+  fi
+}
+
+
 create_configuration_files() {
 	local host_port=$1
-
+  check_share_volumes ${SHARE_VOLUMES_OUTPUT}
+  check_share_volumes ${SHARE_VOLUMES_MYVOL}
 	# compose setup
 	cp -f ${DOCKER_COMPOSE_TEMPLATE_PATH} ${DOCKER_COMPOSE_TARGET_PATH}
 	sed -i -e "s|%HOST_PORT%|${host_port}|g" ${DOCKER_COMPOSE_TARGET_PATH}
 	sed -i -e "s|%GIT_ACCOUNT%|${GIT_ACCOUNT}|g" ${DOCKER_COMPOSE_TARGET_PATH}
-	sed -i -e "s|%KEY_TYPE%|${KEY_TYPE}|g" ${DOCKER_COMPOSE_TARGET_PATH}
-	sed -i -e "s|%IMAGE_TAG%|${IMAGE_TAG}|g" ${DOCKER_COMPOSE_TARGET_PATH}
+	sed -i -e "s|%SHARE_VOLUMES_OUTPUT%|${SHARE_VOLUMES_OUTPUT}|g" ${DOCKER_COMPOSE_TARGET_PATH}
+	sed -i -e "s|%SHARE_VOLUMES_MYVOL%|${SHARE_VOLUMES_MYVOL}|g" ${DOCKER_COMPOSE_TARGET_PATH}
+	# sed -i -e "s|%KEY_TYPE%|${KEY_TYPE}|g" ${DOCKER_COMPOSE_TARGET_PATH}
+	# sed -i -e "s|%IMAGE_TAG%|${IMAGE_TAG}|g" ${DOCKER_COMPOSE_TARGET_PATH}
 }
 
 remove_or_stop_container() {
@@ -102,6 +116,8 @@ prepare_args() {
 	# read -e -i ${HOST_PORT} -p "Which host port do you want to bind to container ssh service?: " HOST_PORT
 	read -e -i ${GIT_ACCOUNT} -p "Which git account you used to clone project git server?: " GIT_ACCOUNT
 	read -e -i ${KEY_TYPE} -p "Which type of ssh key you want to copy to container? (rsa/ed25519/...): " KEY_TYPE
+	read -e -i ${SHARE_VOLUMES_OUTPUT} -p "Which output directory do you want to use? " SHARE_VOLUMES_OUTPUT
+	read -e -i ${SHARE_VOLUMES_MYVOL} -p "Which myvol directory do you want to use? " SHARE_VOLUMES_MYVOL
 }
 
 check_pubkey() {

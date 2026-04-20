@@ -2,10 +2,42 @@
 
 # 定義變數方便日後修改
 RUNNER_VERSION="16.0.0"
-GITLAB_URL="https://gitlabvm.asusautomation.com"
-GITLAB_TAG="stanley-bot"
-REGISTRATION_TOKEN="p7PixG****23Dz"
+GITLAB_URL="https://gitlabvm.asusautomation.com:5050/"
+GITLAB_TAG="stan***-ot"
+REGISTRATION_TOKEN="LNDaekUf****QzLUBdL"
 CERT_FILE="gitlabvm.asusautomation.com.crt"
+SERVICE_HOSTNAME="gitlabvm.asusautomation.com"
+
+# 色彩定義
+GREEN='\e[0;32m'
+YELLOW='\e[0;33m'
+RED='\e[0;31m'
+NC='\e[0m' # No Color
+
+extract_domain() {
+    local input=$1
+    # 移除傳入網址的通訊協定部分
+    local domain=$(echo "$input" | sed -e 's|^[^/]*//||' -e 's|/.*$||' | cut -d':' -f1)
+    echo "$domain"
+}
+
+check_gitlab_reachability() {
+    local TARGET_URL=$1
+    SERVICE_HOSTNAME=$(extract_domain "$TARGET_URL")
+    echo -e "${YELLOW}正在檢查服務連線 ($SERVICE_HOSTNAME)...${NC}"
+    # -c 3: 傳送 3 個封包
+    # -W 2: 等待回應的逾時時間為 2 秒 (避免沒回應時等太久)
+    # > /dev/null 2>&1: 將標準輸出與錯誤訊息隱藏，不干擾畫面
+    if ping -c 3 -W 2 "$SERVICE_HOSTNAME" > /dev/null 2>&1; then
+        echo -e "${GREEN}成功：伺服器 $SERVICE_HOSTNAME 在線中。${NC}"
+    else
+        echo -e "${RED}錯誤：無法連線至 $SERVICE_HOSTNAME，請檢查網路或服務狀態。${NC}"
+        # 視需求決定是否退出腳本
+        exit 1
+    fi
+}
+
+check_gitlab_reachability $GITLAB_URL
 
 echo "--- 開始安裝 GitLab Runner $RUNNER_VERSION ---"
 

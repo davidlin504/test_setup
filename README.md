@@ -51,5 +51,7 @@ bash setup_test_master.sh
 .
 ├── setup_test_master.sh      # Main entry point
 ├── install_docker.sh         # Docker installation helper
+├── install_gitlab_runner.sh  # Gitlab runner installation helper
+├── mount_test_data.sh        # Mount test data helper
 └── README.md
 ```

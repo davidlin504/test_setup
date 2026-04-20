@@ -5,20 +5,19 @@ services:
     image: spx_master:v1.25
     container_name: my_spx_master_v1.25
     hostname: spx_master
+    network_mode: "host"
     stdin_open: true
     tty: true
     restart: no
-    ports:
+    # for ssh connection, we need to use host network or map port 22 to a host port
+    # ports:
     #   - "%HOST_PORT%:22"
-    #   - "1111:111"
-        - "2222:2222"
-    network_mode: "host"
     privileged: true  # 執行 rpcbind 建議開啟
     environment:
       - DISPLAY=:0
       - GIT_ACCOUNT=%GIT_ACCOUNT%
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
-      # - ${HOME}/Desktop/spx_sandbox/output:/output
-      # - ${HOME}/Desktop/spx_sandbox/results:/myvol
+      - %SHARE_VOLUMES_OUTPUT%:/output
+      - %SHARE_VOLUMES_MYVOL%:/myvol
       # - ${HOME}/Desktop/spx_taas_v1.25/Tests:/Tests
