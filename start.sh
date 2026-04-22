@@ -128,7 +128,7 @@ check_pubkey() {
     ssh-keygen -t ${KEY_TYPE} -b 4096 -f "${HOME}/.ssh/id_${KEY_TYPE}" -N ""
   fi
 
-  cp ${HOME}/.ssh/id_${KEY_TYPE}.pub ./id_${KEY_TYPE}.pub
+  cp ${HOME}/.ssh/id_${KEY_TYPE}.pub ./ssh_key.pub
   # echo "公鑰已就緒：$(cat "$pubkey")"
 }
 

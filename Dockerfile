@@ -9,6 +9,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # 更新並安裝必要工具：ssh, rpcbind, 以及常用的網管工具
 RUN apt-get update && apt-get install -y \
+    x11-apps \    
     ipmitool \
     git \
     openssh-server \
@@ -38,10 +39,10 @@ RUN mkdir -p /root/.ssh \
     && mkdir -p /mnt/tftpboot_remote
 
 # 將本地的 id_ras.pub 複製進去，並附加到 authorized_keys
-COPY ./id_rsa.pub /tmp/id_rsa.pub
-RUN cat /tmp/id_rsa.pub >> /root/.ssh/authorized_keys && \
+COPY ./ssh_key.pub /tmp/ssh_key.pub
+RUN cat /tmp/ssh_key.pub >> /root/.ssh/authorized_keys && \
     chmod 600 /root/.ssh/authorized_keys && \
-    rm /tmp/id_rsa.pub
+    rm /tmp/ssh_key.pub
 
 # 啟動腳本：同時開啟 rpcbind 與 sshd
 # 使用 -D 讓 sshd 在前景執行，防止容器退出
