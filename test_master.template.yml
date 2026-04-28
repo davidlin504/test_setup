@@ -1,14 +1,14 @@
 services:
   test_master:
     build:
-      dockerfile: Dockerfile         # 指向當前目錄下的 Dockerfile
+      dockerfile: %DOCKERFILE%         # 指向當前目錄下的 Dockerfile
     image: spx_master:v1.25
     container_name: my_spx_master_v1.25
     hostname: spx_master
     network_mode: "host"
     stdin_open: true
     tty: true
-    restart: no
+    restart: always
     # for ssh connection, we need to use host network or map port 22 to a host port
     # ports:
     #   - "%HOST_PORT%:22"

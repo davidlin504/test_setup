@@ -11,6 +11,7 @@ DOCKER_COMPOSE_TARGET_PATH="test_master.yml"
 DOCKER_COMPOSE="docker compose -f ${DOCKER_COMPOSE_TARGET_PATH}"
 SHARE_VOLUMES_OUTPUT="${HOME}/output"
 SHARE_VOLUMES_MYVOL="${HOME}/myvol"
+DOCKERFILE="Dockerfile"
 
 usage() {
   echo "Usage: $0 [-h]"
@@ -26,36 +27,37 @@ check_share_volumes() {
 
 
 create_configuration_files() {
-	local host_port=$1
+  local host_port=$1
   check_share_volumes ${SHARE_VOLUMES_OUTPUT}
   check_share_volumes ${SHARE_VOLUMES_MYVOL}
-	# compose setup
-	cp -f ${DOCKER_COMPOSE_TEMPLATE_PATH} ${DOCKER_COMPOSE_TARGET_PATH}
-	sed -i -e "s|%HOST_PORT%|${host_port}|g" ${DOCKER_COMPOSE_TARGET_PATH}
-	sed -i -e "s|%GIT_ACCOUNT%|${GIT_ACCOUNT}|g" ${DOCKER_COMPOSE_TARGET_PATH}
-	sed -i -e "s|%SHARE_VOLUMES_OUTPUT%|${SHARE_VOLUMES_OUTPUT}|g" ${DOCKER_COMPOSE_TARGET_PATH}
-	sed -i -e "s|%SHARE_VOLUMES_MYVOL%|${SHARE_VOLUMES_MYVOL}|g" ${DOCKER_COMPOSE_TARGET_PATH}
-	# sed -i -e "s|%KEY_TYPE%|${KEY_TYPE}|g" ${DOCKER_COMPOSE_TARGET_PATH}
-	# sed -i -e "s|%IMAGE_TAG%|${IMAGE_TAG}|g" ${DOCKER_COMPOSE_TARGET_PATH}
+  # compose setup
+  cp -f ${DOCKER_COMPOSE_TEMPLATE_PATH} ${DOCKER_COMPOSE_TARGET_PATH}
+  sed -i -e "s|%HOST_PORT%|${host_port}|g" ${DOCKER_COMPOSE_TARGET_PATH}
+  sed -i -e "s|%GIT_ACCOUNT%|${GIT_ACCOUNT}|g" ${DOCKER_COMPOSE_TARGET_PATH}
+  sed -i -e "s|%SHARE_VOLUMES_OUTPUT%|${SHARE_VOLUMES_OUTPUT}|g" ${DOCKER_COMPOSE_TARGET_PATH}
+  sed -i -e "s|%SHARE_VOLUMES_MYVOL%|${SHARE_VOLUMES_MYVOL}|g" ${DOCKER_COMPOSE_TARGET_PATH}
+  sed -i -e "s|%DOCKERFILE%|${DOCKERFILE}|g" ${DOCKER_COMPOSE_TARGET_PATH}
+  # sed -i -e "s|%KEY_TYPE%|${KEY_TYPE}|g" ${DOCKER_COMPOSE_TARGET_PATH}
+  # sed -i -e "s|%IMAGE_TAG%|${IMAGE_TAG}|g" ${DOCKER_COMPOSE_TARGET_PATH}
 }
 
 remove_or_stop_container() {
-	if [ "$FORCE_REMOVE" -eq 1 ]; then
-		${DOCKER_COMPOSE} kill
-		${DOCKER_COMPOSE} rm -f
-		${DOCKER_COMPOSE} build
-	else
-		${DOCKER_COMPOSE} stop > /dev/null
-	fi
+  if [ "$FORCE_REMOVE" -eq 1 ]; then
+    ${DOCKER_COMPOSE} kill
+    ${DOCKER_COMPOSE} rm -f
+    ${DOCKER_COMPOSE} build
+  else
+    ${DOCKER_COMPOSE} stop > /dev/null
+  fi
 }
 
 start_container() {
-	## Start Container
-	if ! ${DOCKER_COMPOSE} up -d; then
-		echo "[Error]: Failed to start container"
-		exit 1
-	fi
-	CONTAINERNAME="`${DOCKER_COMPOSE} ps | tail -n 1 | awk '{print $1}'`"
+  ## Start Container
+  if ! ${DOCKER_COMPOSE} up -d; then
+    echo "[Error]: Failed to start container"
+    exit 1
+  fi
+  CONTAINERNAME="`${DOCKER_COMPOSE} ps | tail -n 1 | awk '{print $1}'`"
 }
 
 wait_container_env() {
@@ -89,35 +91,53 @@ wait_container_env() {
 }
 
 show_interface_info() {
-	echo ""
-	echo -e -n "\e[0;33m[Password]: password123\e[0;0m"
-	echo ""
+  echo ""
+  echo -e -n "\e[0;33m[Password]: password123\e[0;0m"
+  echo ""
 
-	if [ ! -z "${CONTAINER_CMDS}" ]; then
-		ssh -p ${HOST_PORT} localhost "${CONTAINER_CMDS}; ifconfig"
-		echo "[Exec]: ${CONTAINER_CMDS}"
-	else
-		ssh -p ${HOST_PORT} localhost ifconfig
-	fi
+  if [ ! -z "${CONTAINER_CMDS}" ]; then
+    ssh -p ${HOST_PORT} localhost "${CONTAINER_CMDS}; ifconfig"
+    echo "[Exec]: ${CONTAINER_CMDS}"
+  else
+    ssh -p ${HOST_PORT} localhost ifconfig
+  fi
 
-	echo -e -n "====== You can login your container by \e[0;33m[ ssh root@localhost -p $HOST_PORT ]\e[0;0m ======"
+  echo -e -n "====== You can login your container by \e[0;33m[ ssh root@localhost -p $HOST_PORT ]\e[0;0m ======"
   echo ""
 }
 
 prepare_args() {
-	echo -e -n "\e[0;33mPlease enter required arguments:"
-	echo -e -n '\e[0;0m'
-	echo ""
+  echo -e -n "\e[0;33mPlease enter required arguments:"
+  echo -e -n '\e[0;0m'
+  echo ""
 
-	read -e -i 1 -p "Do you want to update test_master image which would remove old test_master containers? (0/1): " FORCE_REMOVE
-	# TODO after add control tag restore this
-	# read -e -i ${IMAGE_TAG} -p "Which docker image tag do you want to use? (18.04/14.04/latest(==18.04)): " IMAGE_TAG
+  read -e -i 1 -p "Do you want to update test_master image which would remove old test_master containers? (0/1): " FORCE_REMOVE
+  # TODO after add control tag restore this
+  # read -e -i ${IMAGE_TAG} -p "Which docker image tag do you want to use? (18.04/14.04/latest(==18.04)): " IMAGE_TAG
 
-	# read -e -i ${HOST_PORT} -p "Which host port do you want to bind to container ssh service?: " HOST_PORT
-	read -e -i ${GIT_ACCOUNT} -p "Which git account you used to clone project git server?: " GIT_ACCOUNT
-	read -e -i ${KEY_TYPE} -p "Which type of ssh key you want to copy to container? (rsa/ed25519/...): " KEY_TYPE
-	read -e -i ${SHARE_VOLUMES_OUTPUT} -p "Which output directory do you want to use? " SHARE_VOLUMES_OUTPUT
-	read -e -i ${SHARE_VOLUMES_MYVOL} -p "Which myvol directory do you want to use? " SHARE_VOLUMES_MYVOL
+  # read -e -i ${HOST_PORT} -p "Which host port do you want to bind to container ssh service?: " HOST_PORT
+  read -e -i ${GIT_ACCOUNT} -p "Which git account you used to clone project git server?: " GIT_ACCOUNT
+  read -e -i ${KEY_TYPE} -p "Which type of ssh key you want to copy to container? (rsa/ed25519/...): " KEY_TYPE
+  read -e -i ${SHARE_VOLUMES_OUTPUT} -p "Which output directory do you want to use? " SHARE_VOLUMES_OUTPUT
+  read -e -i ${SHARE_VOLUMES_MYVOL} -p "Which myvol directory do you want to use? " SHARE_VOLUMES_MYVOL
+  options=("Automation" "PXE")
+
+  select opt in "${options[@]}"; do
+    case $opt in
+      "Automation")
+        DOCKERFILE="Dockerfile"
+        break
+        ;;
+      "PXE")
+        DOCKERFILE="Dockerfile-pxe"
+        break
+        ;;
+      *) echo "Invalid option $REPLY";;
+    esac
+  done
+  echo "Selected $opt"
+  echo "prepare env ...."
+  echo "env $DOCKERFILE"
 }
 
 check_pubkey() {
@@ -133,13 +153,13 @@ check_pubkey() {
 }
 
 main() {
-	prepare_args
-	check_pubkey
-	create_configuration_files ${HOST_PORT}
-	remove_or_stop_container
-	start_container
-	wait_container_env
-	show_interface_info
+  prepare_args
+  check_pubkey
+  create_configuration_files ${HOST_PORT}
+  remove_or_stop_container
+  start_container
+  wait_container_env
+  show_interface_info
 }
 
 echo ""

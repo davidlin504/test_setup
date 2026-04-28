@@ -7,12 +7,40 @@ GITLAB_TAG="stan***-ot"
 REGISTRATION_TOKEN="LNDaekUf****QzLUBdL"
 CERT_FILE="gitlabvm.asusautomation.com.crt"
 SERVICE_HOSTNAME="gitlabvm.asusautomation.com"
+SERVICE_HOSTNAME_PXE="gitlabvm.qt.org"
 
 # 色彩定義
 GREEN='\e[0;32m'
 YELLOW='\e[0;33m'
 RED='\e[0;31m'
 NC='\e[0m' # No Color
+
+prepare_args() {
+  echo -e -n "\e[0;33mPlease enter required arguments:"
+  echo -e -n '\e[0;0m'
+  echo ""
+  options=("Automation" "PXE")
+
+  select opt in "${options[@]}"; do
+    case $opt in
+      "Automation")
+        SERVICE_HOSTNAME=$SERVICE_HOSTNAME
+        GITLAB_URL="https://${SERVICE_HOSTNAME}:5050/"
+        break
+        ;;
+      "PXE")
+        SERVICE_HOSTNAME=$SERVICE_HOSTNAME_PXE
+        GITLAB_URL="https://${SERVICE_HOSTNAME}:5050/"
+        break
+        ;;
+      *) echo "Invalid option $REPLY";;
+    esac
+  done
+}
+prepare_args
+echo "Selected $opt"
+echo "prepare env ...."
+echo "env $GITLAB_URL"
 
 extract_domain() {
     local input=$1
