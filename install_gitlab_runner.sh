@@ -2,7 +2,7 @@
 
 # 定義變數方便日後修改
 RUNNER_VERSION="16.0.0"
-GITLAB_TAG="stan***-ot"
+GITLAB_TAG="stan***-bot"
 REGISTRATION_TOKEN="LNDaekUf****QzLUBdL"
 
 SERVICE_HOSTNAME="gitlabvm.asusautomation.com"
@@ -16,12 +16,41 @@ YELLOW='\e[0;33m'
 RED='\e[0;31m'
 NC='\e[0m' # No Color
 
+menu() {
+  echo ""
+  echo -e -n "\e[0;32m ======== [Start setup gitlab runner wizzard] ========"
+  echo ""
+  echo -e -n '\e[0;0m'
+  echo ""
+  options=("install" "register" "unregister")
+
+  select opt in "${options[@]}"; do
+    case $opt in
+      "install")
+        return 0
+        break
+        ;;
+      "register")
+        register_runner
+        break
+        ;;
+      "unregister")
+        unregister_runner
+        break
+        ;;
+      *) echo "Invalid option $REPLY";;
+    esac
+  done
+}
+
 unregister_runner() {
+  echo -e -n "${YELLOW}Start unregister gitlab runner:${NC}"
+  echo ""
   # 使用 type 或 command 檢查，並整合錯誤訊息
   type gitlab-runner &>/dev/null || { echo -e "${RED}錯誤：gitlab-runner 尚未安裝${NC}"; exit 1; }
 
-  # 簡潔的條件判斷
-  [[ $FORCE_UNREGISTER -eq 1 ]] && sudo gitlab-runner unregister --all-runners
+  sudo gitlab-runner unregister --all-runners
+  sudo gitlab-runner verify --delete
 
   exit $?
 }
@@ -29,12 +58,6 @@ unregister_runner() {
 prepare_args() {
   echo -e -n "${YELLOW}Please enter required arguments:${NC}"
   echo ""
-  read -e -i 0 -p "Do you want to unregister all runners on the machine? 1)yes 0)no: " FORCE_UNREGISTER
-
-  if [ "$FORCE_UNREGISTER" -eq 1 ]; then
-    echo -e "${GREEN}Force unregister selected. Skipping remaining arguments...${NC}"
-    unregister_runner
-  fi
 
   read -e -i ${GITLAB_TAG} -p "What is your runner tag?: " GITLAB_TAG
   read -e -i ${REGISTRATION_TOKEN} -p "What is your ruuner token?: " REGISTRATION_TOKEN
@@ -124,42 +147,50 @@ install_gitlab_runner() {
       echo "錯誤：gitlab-runner 安裝失敗，請檢查網路或軟體源設定。"
       exit 1
   fi
+
+  echo "--- 安裝完成 ---"
 }
+
+register_runner() {
+  echo -e -n "${YELLOW}Start register gitlab runner:${NC}"
+  echo ""
+  # 2. 設定免密碼 sudo (建議用 sudoers.d)
+  echo "gitlab-runner ALL=(ALL:ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/gitlab-runner
+
+  # 3. 抓取 SSL 憑證並更新
+  openssl s_client -showcerts -servername $SERVICE_HOSTNAME -connect $SERVICE_HOSTNAME:443 </dev/null 2>/dev/null | openssl x509 -outform PEM > $CERT_FILE
+  sudo cp $CERT_FILE /usr/local/share/ca-certificates/
+  sudo update-ca-certificates
+
+  # 4. 設定 Docker Insecure Registries
+  sudo mkdir -p /etc/docker
+  echo -e "{\n\t\"insecure-registries\" : [\"$SERVICE_HOSTNAME:5005\"]\n}" | sudo tee /etc/docker/daemon.json > /dev/null
+  sudo systemctl daemon-reload
+  sudo systemctl restart docker
+
+  # 5. Git 全域設定
+  sudo git config --system http.sslVerify false
+
+  # 6. 非互動式註冊 Runner (優化重點)
+  sudo gitlab-runner register \
+    --non-interactive \
+    --url "$GITLAB_URL" \
+    --registration-token "$REGISTRATION_TOKEN" \
+    --executor "shell" \
+    --description "Auto-configured Runner" \
+    --tag-list "$GITLAB_TAG" \
+    --run-untagged="true" \
+    --locked="false"
+
+  # 7. 重啟服務
+  sudo gitlab-runner restart
+  xhost + || echo "xhost setup skipped (no display found)"
+
+  echo "--- 註冊完成 ---"
+}
+
+menu
 prepare_args
 check_gitlab_reachability $GITLAB_URL
 install_gitlab_runner
-
-
-# 2. 設定免密碼 sudo (建議用 sudoers.d)
-echo "gitlab-runner ALL=(ALL:ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/gitlab-runner
-
-# 3. 抓取 SSL 憑證並更新
-openssl s_client -showcerts -servername $SERVICE_HOSTNAME -connect $SERVICE_HOSTNAME:443 </dev/null 2>/dev/null | openssl x509 -outform PEM > $CERT_FILE
-sudo cp $CERT_FILE /usr/local/share/ca-certificates/
-sudo update-ca-certificates
-
-# 4. 設定 Docker Insecure Registries
-sudo mkdir -p /etc/docker
-echo -e "{\n\t\"insecure-registries\" : [\"$SERVICE_HOSTNAME:5005\"]\n}" | sudo tee /etc/docker/daemon.json > /dev/null
-sudo systemctl daemon-reload
-sudo systemctl restart docker
-
-# 5. Git 全域設定
-sudo git config --system http.sslVerify false
-
-# 6. 非互動式註冊 Runner (優化重點)
-sudo gitlab-runner register \
-  --non-interactive \
-  --url "$GITLAB_URL" \
-  --registration-token "$REGISTRATION_TOKEN" \
-  --executor "shell" \
-  --description "Auto-configured Runner" \
-  --tag-list "$GITLAB_TAG" \
-  --run-untagged="true" \
-  --locked="false"
-
-# 7. 重啟服務
-sudo gitlab-runner restart
-xhost + || echo "xhost setup skipped (no display found)"
-
-echo "--- 安裝與註冊完成 ---"
+register_runner
