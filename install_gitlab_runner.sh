@@ -1,14 +1,15 @@
 #!/bin/bash
 
-# 定義變數方便日後修改
 RUNNER_VERSION="16.0.0"
-GITLAB_TAG="stan***-bot"
-REGISTRATION_TOKEN="LNDaekUf****QzLUBdL"
+GITLAB_TAG="stanley-bot"
 
 SERVICE_HOSTNAME="gitlabvm.asusautomation.com"
+REGISTRATION_TOKEN="LNDaekUf97Rz6QzLUBdL"
+
+# PXE settings
 SERVICE_HOSTNAME_PXE="gitlabvm.qt.org"
-GITLAB_URL="https://gitlabvm.asusautomation.com/"
-CERT_FILE="gitlabvm.asusautomation.com.crt"
+REGISTRATION_TOKEN_PXE="HLRhvzA77ZXWKDrcHNz2"
+
 
 # 色彩定義
 GREEN='\e[0;32m'
@@ -16,25 +17,32 @@ YELLOW='\e[0;33m'
 RED='\e[0;31m'
 NC='\e[0m' # No Color
 
+STATUS_SUCCESS=[${GREEN}Success${NC}]
+STATUS_WARNING=[${YELLOW}Warning${NC}]
+STATUS_ERROR=[${RED}Error${NC}]
+
 menu() {
   echo ""
-  echo -e -n "\e[0;32m ======== [Start setup gitlab runner wizzard] ========"
+  echo -e "${GREEN} ======== [Start setup gitlab runner wizzard] ======== ${NC}"
   echo ""
-  echo -e -n '\e[0;0m'
-  echo ""
-  options=("install" "register" "unregister")
+
+  echo -e "${YELLOW}Please select the action you wish to take:${NC}"
+  options=("install gitlab runner" "register gitlab runner" "unregister gitlab runner")
 
   select opt in "${options[@]}"; do
     case $opt in
-      "install")
-        return 0
+      "install gitlab runner")
+        install_gitlab_runner
         break
         ;;
-      "register")
+      "register gitlab runner")
+        set_env
+        prepare_args
+        check_insecure_registries
         register_runner
         break
         ;;
-      "unregister")
+      "unregister gitlab runner")
         unregister_runner
         break
         ;;
@@ -44,8 +52,7 @@ menu() {
 }
 
 unregister_runner() {
-  echo -e -n "${YELLOW}Start unregister gitlab runner:${NC}"
-  echo ""
+  echo -e "${YELLOW}Start unregister gitlab runner:${NC}"
   # 使用 type 或 command 檢查，並整合錯誤訊息
   type gitlab-runner &>/dev/null || { echo -e "${RED}錯誤：gitlab-runner 尚未安裝${NC}"; exit 1; }
 
@@ -55,10 +62,38 @@ unregister_runner() {
   exit $?
 }
 
-prepare_args() {
-  echo -e -n "${YELLOW}Please enter required arguments:${NC}"
-  echo ""
+set_env() {
+  echo -e "${YELLOW}Please select the deployment location:${NC}"
+  options=("Automation" "PXE")
 
+  select opt in "${options[@]}"; do
+    case $opt in
+      "Automation")
+        SERVICE_HOSTNAME=$SERVICE_HOSTNAME
+        REGISTRATION_TOKEN=$REGISTRATION_TOKEN
+        break
+        ;;
+      "PXE")
+        SERVICE_HOSTNAME=$SERVICE_HOSTNAME_PXE
+        REGISTRATION_TOKEN=$REGISTRATION_TOKEN_PXE
+        break
+        ;;
+      *) echo "Invalid option $REPLY";;
+    esac
+  done
+  GITLAB_URL="https://${SERVICE_HOSTNAME}/"
+  CERT_FILE="${SERVICE_HOSTNAME}.crt"
+  echo "Selected $opt"
+  echo -e "$STATUS_SUCCESS The environmental variable has changed to $SERVICE_HOSTNAME"
+  echo -e "$STATUS_SUCCESS The environmental variable has changed to $GITLAB_URL"
+  echo -e "$STATUS_SUCCESS Your cert file is $CERT_FILE"
+  echo ""
+  sudo chmod 755 ./check_network.sh
+  ENTRY=$SERVICE_HOSTNAME ./check_network.sh
+}
+
+prepare_args() {
+  echo -e "${YELLOW}Please enter required arguments:${NC}"
   read -e -i ${GITLAB_TAG} -p "What is your runner tag?: " GITLAB_TAG
   read -e -i ${REGISTRATION_TOKEN} -p "What is your ruuner token?: " REGISTRATION_TOKEN
 
@@ -72,28 +107,6 @@ prepare_args() {
     exit 1
   fi
 
-  options=("Automation" "PXE")
-
-  select opt in "${options[@]}"; do
-    case $opt in
-      "Automation")
-        SERVICE_HOSTNAME=$SERVICE_HOSTNAME
-        break
-        ;;
-      "PXE")
-        SERVICE_HOSTNAME=$SERVICE_HOSTNAME_PXE
-        break
-        ;;
-      *) echo "Invalid option $REPLY";;
-    esac
-  done
-  GITLAB_URL="https://${SERVICE_HOSTNAME}/"
-  CERT_FILE="${SERVICE_HOSTNAME}.crt"
-  echo "Selected $opt"
-  echo "prepare env ...."
-  echo "env $SERVICE_HOSTNAME"
-  echo "env $GITLAB_URL"
-  echo "env $CERT_FILE"
 }
 
 extract_domain() {
@@ -152,8 +165,7 @@ install_gitlab_runner() {
 }
 
 register_runner() {
-  echo -e -n "${YELLOW}Start register gitlab runner:${NC}"
-  echo ""
+  echo -e "${YELLOW}Start register gitlab runner:${NC}"
   # 2. 設定免密碼 sudo (建議用 sudoers.d)
   echo "gitlab-runner ALL=(ALL:ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/gitlab-runner
 
@@ -161,12 +173,6 @@ register_runner() {
   openssl s_client -showcerts -servername $SERVICE_HOSTNAME -connect $SERVICE_HOSTNAME:443 </dev/null 2>/dev/null | openssl x509 -outform PEM > $CERT_FILE
   sudo cp $CERT_FILE /usr/local/share/ca-certificates/
   sudo update-ca-certificates
-
-  # 4. 設定 Docker Insecure Registries
-  sudo mkdir -p /etc/docker
-  echo -e "{\n\t\"insecure-registries\" : [\"$SERVICE_HOSTNAME:5005\"]\n}" | sudo tee /etc/docker/daemon.json > /dev/null
-  sudo systemctl daemon-reload
-  sudo systemctl restart docker
 
   # 5. Git 全域設定
   sudo git config --system http.sslVerify false
@@ -184,13 +190,33 @@ register_runner() {
 
   # 7. 重啟服務
   sudo gitlab-runner restart
-  xhost + || echo "xhost setup skipped (no display found)"
 
   echo "--- 註冊完成 ---"
 }
 
+check_insecure_registries() {
+  sudo apt install jq -y
+  CONF="/etc/docker/daemon.json"
+  ENTRY=$SERVICE_HOSTNAME
+
+  sudo mkdir -p /etc/docker
+
+  # 1. 檢查檔案是否存在，不存在則建立基本格式
+  if [ ! -f "$CONF" ]; then
+      echo "{\"insecure-registries\": []}" | sudo tee "$CONF" > /dev/null
+  fi
+
+  # 2. 檢查是否已經包含該網域
+  if grep -q "$ENTRY" "$CONF"; then
+      echo -e "$STATUS_SUCCESS $ENTRY 已存在於設定中，無需修改。"
+  else
+      echo -e "$STATUS_INFO 正在將 $ENTRY 加入 insecure-registries..."
+      sudo jq ".[\"insecure-registries\"] += [\"$ENTRY\"] | .[\"insecure-registries\"] |= unique" "$CONF" > /tmp/docker_dm.json && sudo mv /tmp/docker_dm.json "$CONF"
+
+      echo -e "$STATUS_INFO 重啟 Docker 服務..."
+      sudo systemctl daemon-reload
+      sudo systemctl restart docker
+  fi
+}
+
 menu
-prepare_args
-check_gitlab_reachability $GITLAB_URL
-install_gitlab_runner
-register_runner

@@ -17,6 +17,15 @@ A script that helps users quickly build a **Robot Framework** test environment b
 | OS | Version |
 |----|---------|
 | Ubuntu | 22.04 |
+| Ubuntu | 24.x |
+
+## Package
+| package | Version |
+|---------|---------|
+| gitlab-runner | 16.x |
+| gitlab-runner | 18.11.1 |
+| docker | 29.4.0 |
+| docker compose | v5.1.2 |
 
 ---
 
@@ -53,5 +62,6 @@ bash setup_test_master.sh
 ├── install_docker.sh         # Docker installation helper
 ├── install_gitlab_runner.sh  # Gitlab runner installation helper
 ├── mount_test_data.sh        # Mount test data helper
+├── pull_spx_image.sh         # Manual Pull SPX image
 └── README.md
 ```
